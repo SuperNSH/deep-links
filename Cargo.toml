@@ -1,0 +1,10 @@
+[package]
+name = "nsh-deep-links"
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+description = "Universal Links on iOS and macOS and App Links on Android, routed to app screens. Custom URL schemes are already in NSH core."
+repository = "https://github.com/SuperNSH/deep-links"
+publish = false
+
+[dependencies]
