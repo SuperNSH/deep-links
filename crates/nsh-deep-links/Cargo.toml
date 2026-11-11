@@ -1,0 +1,61 @@
+[package]
+name = "nsh-deep-links"
+description = "Universal Links on iOS and macOS and App Links on Android, routed to app screens: the verified-web-link layer over NSH core's URL schemes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "nsh_deep_links"
+path = "src/lib.rs"
+
+[dependencies]
+# Git, not crates.io: the published 0.4.0 does not ship `url_scheme`.
+nsh-core = { git = "https://github.com/longbridge/nsh" }
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", default-features = false, features = ["sync", "time"] }
+serde_json = "1"
+url = "2.5"
+percent-encoding = "2.3"
+
+# Apple: Universal Links arrive as NSUserActivity (Foundation) on the system queues.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSError",
+  "NSObject",
+  "NSSet",
+  "NSString",
+  "NSURL",
+] }
+block2 = "0.6.2"
+dispatch2 = "0.3.1"
+
+# Android: App Links intents over JNI. ndk-context carries the VM.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22.4"
+ndk-context = "0.1.1"
+libc = "0.2.191"
+
+# Windows: custom-scheme activation for the current user and the single-instance handoff.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = [
+  "std",
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_System_Registry",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+# Linux: the desktop hands links over through the GTK application's `open`.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk4 = { version = "0.11", features = ["v4_14"] }
+
+[dev-dependencies]
+tokio = { version = "1.54.1", default-features = false, features = ["rt", "macros"] }
