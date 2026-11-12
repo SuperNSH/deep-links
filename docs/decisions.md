@@ -6,15 +6,15 @@ None. The three decisions this repo opened with are resolved below.
 
 ## Decided
 
-### 1. NSH version: nsh-core from git, not crates.io 0.4.0
+### 1. NSH version: nsh-core 0.5.0 from crates.io
 
-`crates/nsh-deep-links` depends on `nsh-core = { git = "https://github.com/longbridge/nsh" }`.
-Evidence: docs.rs for nsh-core 0.4.0 (checked 2026-11-10) publishes no `url_scheme`
-module, and the custom-scheme core this crate wraps — `check_url`, `check_scheme`,
-`schemes_from_json`, `MAX_URL_LEN`, `MAX_PENDING` — exists only in the repository. This
-diverges from biometrics, which pins the published `nsh-core = "0.4.0"`; biometrics
-needs nothing from `url_scheme`, this crate does. Consequence: builds track NSH main
-until a release ships the module, and the pin moves to a version the day one does.
+`crates/nsh-deep-links` depends on `nsh-core = "0.5.0"`. Until 0.5.0 it depended on
+`nsh-core = { git = "https://github.com/longbridge/nsh" }`: docs.rs for nsh-core 0.4.0
+(checked 2026-11-10) published no `url_scheme` module, and the custom-scheme core this
+crate wraps — `check_url`, `check_scheme`, `schemes_from_json`, `MAX_URL_LEN`,
+`MAX_PENDING` — existed only in the repository. 0.5.0 (2026-11-11) publishes the module,
+and its `url_scheme.rs` is byte-identical to the `main` commit the git dependency last
+resolved to (`7cd0801`), so the pin moved to the release as planned.
 
 ### 2. Library choice: nothing imported; an org-native crate with reference parity
 

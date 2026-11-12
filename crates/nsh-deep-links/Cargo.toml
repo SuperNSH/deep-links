@@ -13,8 +13,8 @@ name = "nsh_deep_links"
 path = "src/lib.rs"
 
 [dependencies]
-# Git, not crates.io: the published 0.4.0 does not ship `url_scheme`.
-nsh-core = { git = "https://github.com/longbridge/nsh" }
+# 0.5.0 is the first crates.io release that ships `url_scheme` (docs/decisions.md #1).
+nsh-core = "0.5.0"
 thiserror = "2.0.21"
 tokio = { version = "1.54.1", default-features = false, features = ["sync", "time"] }
 serde_json = "1"
