@@ -1,46 +1,44 @@
-//! A backend whose deliveries the test scripts, and whose waits it can cancel or fail. Tests
-//! use it, and so can an app that runs without a platform behind it.
+//! A backend whose deliveries the test scripts: the launch link, links while the app runs,
+//! duplicates, platform failures and cancels. Tests use it, and so can an app that runs without
+//! a platform behind it.
 
 use std::{
-    collections::VecDeque,
     future::ready,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 
-use tokio::sync::oneshot;
-
 use crate::{
     backend::{Backend, BackendFuture},
     error::{DeepLinksError, ErrorKind},
+    inbox::Inbox,
     links::LinkKind,
-    MAX_PENDING,
 };
 
-/// A backend with a scripted initial link, a queue of deliveries, and a next answer the test
-/// can fail. Clones share one state.
+/// A backend with a scripted launch link and a queue of deliveries. Clones share one state.
 ///
-/// Like the platforms, a cancelled wait resolves with `ERR_DEEP_LINKS_CANCELLED`, and a
-/// delivery with no wait pending waits in the queue, the oldest dropped past
-/// [`MAX_PENDING`].
+/// It keeps the platforms' rules: a cancelled wait resolves `ERR_DEEP_LINKS_CANCELLED`, a
+/// delivery with no wait is held, the oldest dropped past [`crate::MAX_PENDING`], and the same
+/// link fired twice while the first copy resolves is refused as `ERR_DEEP_LINKS_BUSY`.
 #[derive(Clone)]
 pub struct FakeBackend {
-    state: Arc<Mutex<FakeState>>,
+    shared: Arc<Shared>,
+}
+
+struct Shared {
+    inbox: Inbox,
+    state: Mutex<State>,
 }
 
 #[derive(Default)]
-struct FakeState {
+struct State {
     initial: Option<String>,
-    queued: VecDeque<String>,
-    next_error: Option<DeepLinksError>,
-    waiting: Option<oneshot::Sender<Result<String, DeepLinksError>>>,
+    initial_error: Option<DeepLinksError>,
     web_kind: Option<LinkKind>,
-    deliveries: usize,
-    cancels: usize,
     initial_reads: usize,
 }
 
 impl Default for FakeBackend {
-    /// A backend with nothing scripted: no initial link, no deliveries.
+    /// A backend with nothing scripted: no launch link, no deliveries, no verified web links.
     fn default() -> Self {
         Self::new()
     }
@@ -50,43 +48,47 @@ impl FakeBackend {
     /// A backend with nothing scripted.
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(FakeState::default())),
+            shared: Arc::new(Shared {
+                inbox: Inbox::new(),
+                state: Mutex::new(State::default()),
+            }),
         }
     }
 
-    fn lock(&self) -> MutexGuard<'_, FakeState> {
-        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    fn lock(&self) -> MutexGuard<'_, State> {
+        self.shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Sets the link the app was started with.
-    pub fn set_initial(&self, url: Option<String>) {
-        self.lock().initial = url;
+    /// Sets the URL the app was started with.
+    pub fn set_initial(&self, url: Option<&str>) {
+        self.lock().initial = url.map(str::to_owned);
     }
 
-    /// Hands a URL over: to a waiting call at once, else to the queue, its oldest link
-    /// dropped past [`MAX_PENDING`].
-    pub fn deliver(&self, url: &str) {
-        let mut state = self.lock();
-        if let Some(waiting) = state.waiting.take() {
-            state.deliveries += 1;
-            let _ = waiting.send(Ok(url.to_owned()));
-            return;
-        }
-        if state.queued.len() >= MAX_PENDING {
-            state.queued.pop_front();
-        }
-        state.queued.push_back(url.to_owned());
+    /// Makes reading the launch URL fail with `error`, as a platform whose bridge broke.
+    pub fn fail_initial(&self, error: DeepLinksError) {
+        self.lock().initial_error = Some(error);
     }
 
-    /// Makes the next `next_url` fail with `error` — a waiting one at once, else the next
-    /// call, before any queued link is handed over.
+    /// Hands a URL over: to the waiting call at once, else to the queue. `Err(Busy)` when it is
+    /// a copy of the link the last wait resolved with.
+    pub fn deliver(&self, url: &str) -> Result<(), DeepLinksError> {
+        self.shared.inbox.deliver(url)
+    }
+
+    /// Makes the waiting `next_url` fail with `error`, else the next call, before any queued
+    /// link: a platform failure (`ERR_DEEP_LINKS_BACKEND`), a deadline, a system cancel.
     pub fn fail_next(&self, error: DeepLinksError) {
-        let mut state = self.lock();
-        if let Some(waiting) = state.waiting.take() {
-            let _ = waiting.send(Err(error));
-            return;
-        }
-        state.next_error = Some(error);
+        self.shared.inbox.fail(error);
+    }
+
+    /// Fails the waiting `next_url` as the platform's bridge would: `ERR_DEEP_LINKS_BACKEND`.
+    pub fn fail_platform(&self) {
+        self.fail_next(
+            DeepLinksError::new(ErrorKind::Backend).with_detail("the scripted platform failed"),
+        );
     }
 
     /// Sets what `web_link_kind` answers; `None` by default, as a platform without verified
@@ -97,25 +99,25 @@ impl FakeBackend {
 
     /// Whether a `next_url` call waits for its answer.
     pub fn waiting(&self) -> bool {
-        self.lock().waiting.is_some()
+        self.shared.inbox.waiting()
     }
 
-    /// The links waiting in the queue.
+    /// The links held for the next waits, oldest first.
     pub fn queued(&self) -> Vec<String> {
-        self.lock().queued.iter().cloned().collect()
+        self.shared.inbox.queued()
     }
 
     /// How many links were handed to a waiting call or taken from the queue.
     pub fn deliveries(&self) -> usize {
-        self.lock().deliveries
+        self.shared.inbox.deliveries()
     }
 
     /// How many times a wait was asked to cancel.
     pub fn cancels(&self) -> usize {
-        self.lock().cancels
+        self.shared.inbox.cancels()
     }
 
-    /// How many times the initial link was read.
+    /// How many times the launch URL was read.
     pub fn initial_reads(&self) -> usize {
         self.lock().initial_reads
     }
@@ -125,35 +127,19 @@ impl Backend for FakeBackend {
     fn initial_url(&self) -> BackendFuture<'_, Result<Option<String>, DeepLinksError>> {
         let mut state = self.lock();
         state.initial_reads += 1;
-        let initial = state.initial.clone();
-        Box::pin(ready(Ok(initial)))
+        let answer = match state.initial_error.clone() {
+            Some(error) => Err(error),
+            None => Ok(state.initial.clone()),
+        };
+        Box::pin(ready(answer))
     }
 
     fn next_url(&self) -> BackendFuture<'_, Result<String, DeepLinksError>> {
-        let mut state = self.lock();
-        if let Some(error) = state.next_error.take() {
-            return Box::pin(ready(Err(error)));
-        }
-        if let Some(url) = state.queued.pop_front() {
-            state.deliveries += 1;
-            return Box::pin(ready(Ok(url)));
-        }
-        let (sender, receiver) = oneshot::channel();
-        state.waiting = Some(sender);
-        // A dropped receiver means the caller went away without cancelling: that is a cancel.
-        Box::pin(async move {
-            receiver
-                .await
-                .unwrap_or_else(|_| Err(DeepLinksError::new(ErrorKind::Cancelled)))
-        })
+        self.shared.inbox.next_url()
     }
 
     fn cancel_wait(&self) {
-        let mut state = self.lock();
-        state.cancels += 1;
-        if let Some(waiting) = state.waiting.take() {
-            let _ = waiting.send(Err(DeepLinksError::new(ErrorKind::Cancelled)));
-        }
+        self.shared.inbox.cancel();
     }
 
     fn web_link_kind(&self) -> Option<LinkKind> {
@@ -164,65 +150,74 @@ impl Backend for FakeBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::MAX_PENDING;
 
     fn run<F: std::future::Future>(future: F) -> F::Output {
-        tokio::runtime::Builder::new_current_thread()
-            .build()
-            .ok()
-            .expect("a runtime")
-            .block_on(future)
+        match tokio::runtime::Builder::new_current_thread().build() {
+            Ok(runtime) => runtime.block_on(future),
+            Err(error) => panic!("no runtime: {error}"),
+        }
+    }
+
+    fn code<T>(answer: Result<T, DeepLinksError>) -> Option<&'static str> {
+        answer.err().map(|error| error.code())
     }
 
     #[test]
     fn the_initial_link_is_reported_once_set() {
         let fake = FakeBackend::new();
         assert_eq!(run(fake.initial_url()).ok(), Some(None));
-        fake.set_initial(Some("myapp://open".to_owned()));
+        fake.set_initial(Some("myapp://open"));
         assert_eq!(
             run(fake.initial_url()).ok(),
             Some(Some("myapp://open".to_owned()))
         );
         assert_eq!(fake.initial_reads(), 2);
+        fake.fail_initial(DeepLinksError::new(ErrorKind::Backend));
+        assert_eq!(
+            code(run(fake.initial_url())),
+            Some("ERR_DEEP_LINKS_BACKEND")
+        );
     }
 
     #[test]
     fn a_delivery_reaches_the_waiting_call_at_once() {
         let fake = FakeBackend::new();
         let waiting = fake.next_url();
-        fake.deliver("myapp://open");
+        assert!(fake.waiting());
+        assert!(fake.deliver("myapp://open").is_ok());
         assert_eq!(run(waiting).ok(), Some("myapp://open".to_owned()));
         assert_eq!(fake.deliveries(), 1);
-        assert_eq!(fake.queued(), Vec::<String>::new());
+        assert!(fake.queued().is_empty());
     }
 
     #[test]
     fn a_delivery_with_no_wait_queues_up_to_the_core_limit() {
         let fake = FakeBackend::new();
-        fake.set_initial(None);
         for i in 0..=MAX_PENDING {
-            fake.deliver(&format!("myapp://{i}"));
+            assert!(fake.deliver(&format!("myapp://{i}")).is_ok());
         }
-        // One past the limit: the oldest went.
         assert_eq!(fake.queued().len(), MAX_PENDING);
-        assert_eq!(
-            run(fake.next_url()).ok(),
-            Some("myapp://1".to_owned()),
-            "the oldest was dropped"
-        );
+        assert_eq!(run(fake.next_url()).ok(), Some("myapp://1".to_owned()));
+    }
+
+    #[test]
+    fn a_copy_of_the_resolving_link_is_busy_and_another_link_queues() {
+        let fake = FakeBackend::new();
+        let waiting = fake.next_url();
+        assert!(fake.deliver("myapp://a").is_ok());
+        assert_eq!(code(fake.deliver("myapp://a")), Some("ERR_DEEP_LINKS_BUSY"));
+        assert!(fake.deliver("myapp://b").is_ok());
+        assert_eq!(run(waiting).ok(), Some("myapp://a".to_owned()));
+        assert_eq!(fake.queued(), vec!["myapp://b".to_owned()]);
     }
 
     #[test]
     fn a_cancelled_wait_resolves_once_with_the_code() {
         let fake = FakeBackend::new();
         let waiting = fake.next_url();
-        assert!(fake.waiting());
         fake.cancel_wait();
-        let answer = run(waiting).err();
-        assert_eq!(
-            answer.map(DeepLinksError::code),
-            Some("ERR_DEEP_LINKS_CANCELLED")
-        );
-        // Cancelling again touches nothing: the wait is gone.
+        assert_eq!(code(run(waiting)), Some("ERR_DEEP_LINKS_CANCELLED"));
         fake.cancel_wait();
         assert_eq!(fake.cancels(), 2);
     }
@@ -230,12 +225,9 @@ mod tests {
     #[test]
     fn the_next_answer_fails_before_the_queue_hands_over() {
         let fake = FakeBackend::new();
-        fake.deliver("myapp://queued");
-        fake.fail_next(DeepLinksError::new(ErrorKind::Timeout));
-        assert_eq!(
-            run(fake.next_url()).err().map(DeepLinksError::code),
-            Some("ERR_DEEP_LINKS_TIMEOUT")
-        );
+        assert!(fake.deliver("myapp://queued").is_ok());
+        fake.fail_platform();
+        assert_eq!(code(run(fake.next_url())), Some("ERR_DEEP_LINKS_BACKEND"));
         assert_eq!(run(fake.next_url()).ok(), Some("myapp://queued".to_owned()));
     }
 

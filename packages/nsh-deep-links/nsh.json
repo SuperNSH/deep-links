@@ -1,0 +1,8 @@
+{
+  "name": "nsh-deep-links tests",
+  "id": "dev.supernsh.deep-links.tests",
+  "version": "0.1.0",
+  "build": 1,
+  "rust": "../../crates/nsh-deep-links",
+  "capabilities": {}
+}

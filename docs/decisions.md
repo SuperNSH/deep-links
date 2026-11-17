@@ -82,3 +82,40 @@ against the wrong team, appID or package are `ERR_DEEP_LINKS_ASSOCIATION_INVALID
 (a verification failure); platform FFI, JNI, COM, D-Bus and I/O failures are
 `ERR_DEEP_LINKS_BACKEND`. The table is add-only from here; codes are never renamed or
 reused.
+
+### 4. Platform intake: NSH core for custom schemes, the least host-touching hook for verified links
+
+Decided 2026-11-17, with the code.
+
+- **Custom schemes** come from NSH core on every native platform (`next_url_scheme_open`,
+  `app_url`), the intake every NSH host already feeds. The crate keeps core's waiting answer
+  across its own cancels (core holds one answer slot; a link delivered into a dropped one would
+  be lost) and skips the one queued copy of the launch link, so `initial` and `next` never
+  both hand it out. The state lives in a surface global (`try_global`), which also tells the
+  crate when no engine runs.
+- **Apple.** NSH's hosts implement no `continueUserActivity`, so the Apple module adds that
+  one method to the host's delegate class at runtime (`class_addMethod`, on the main queue),
+  only where the class has none. This is the one host-touching step a crate can take; it
+  cannot reach an iOS cold-start activity, which the host reads from the scene's connection
+  options before crate code runs. That gap is documented, not papered over.
+- **Android.** The launch intent is read over JNI. App Links that reach a running app go to
+  `onNewIntent`, which NSH's activity hands only to core, and core keeps claimed schemes
+  only; `https` never reaches the crate. Closing that needs the host to pass `https` intents
+  on. Documented as not seen.
+- **Windows, Linux:** core's intake only; no `windows` or `gtk4` dependency, so no system
+  packages are needed to build. **Web:** the page's address only.
+
+### 5. Delivery semantics the references left open
+
+- `stop()` is terminal: delivery ends, and every later `next` is `ERR_DEEP_LINKS_CANCELLED`.
+  A restartable stop would let a link arriving between stop and restart be routed by an owner
+  that already let go.
+- A deadline that passes cancels the wait but loses nothing: a link that arrives later waits
+  for the next call.
+- "Duplicate delivery" is the system firing the link a wait just resolved with again: the
+  backend refuses that copy with `ERR_DEEP_LINKS_BUSY` and does not hold it. A different link
+  arriving at the same moment is held as usual.
+- `Link` carries its `route`: `next` routes before it resolves, so the app gets one answer
+  per link rather than a link it must route again.
+- `parse` names a type (`string`, `number`, `integer`, `boolean`) rather than a function, so
+  one config behaves the same in Rust and TS.

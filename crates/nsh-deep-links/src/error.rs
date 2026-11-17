@@ -38,8 +38,7 @@ pub enum ErrorKind {
 ///
 /// `Display` names the code's message, and the detail when there is one. The detail never
 /// holds link text or other data that came from outside the app.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("{}", .joined())]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeepLinksError {
     kind: ErrorKind,
     detail: Option<String>,
@@ -71,6 +70,11 @@ impl DeepLinksError {
     /// The stable code, such as `ERR_DEEP_LINKS_CANCELLED`. Apps match on this.
     pub fn code(&self) -> &'static str {
         self.kind.code()
+    }
+
+    /// The message: what to do, then the detail when there is one. The same text as `Display`.
+    pub fn message(&self) -> String {
+        self.joined()
     }
 
     fn joined(&self) -> String {
@@ -105,15 +109,11 @@ impl ErrorKind {
     pub fn message(self) -> &'static str {
         match self {
             ErrorKind::InvalidUrl => "The link is not an absolute URL a link may be.",
-            ErrorKind::UrlTooLarge => {
-                "The link is too long. Links have at most 16 KiB of text."
-            }
+            ErrorKind::UrlTooLarge => "The link is too long. Links have at most 16 KiB of text.",
             ErrorKind::DisallowedScheme => {
                 "The link's scheme is not the app's own and not a verified web link."
             }
-            ErrorKind::HostNotAllowed => {
-                "The link's host is not one the app's prefixes allow."
-            }
+            ErrorKind::HostNotAllowed => "The link's host is not one the app's prefixes allow.",
             ErrorKind::NoRoute => "The link's path matches no route in the table.",
             ErrorKind::InvalidParameter => {
                 "A link parameter is not of the type its route declares."
@@ -122,9 +122,7 @@ impl ErrorKind {
             ErrorKind::UnsupportedPlatform => {
                 "Verified web links are not available on this platform."
             }
-            ErrorKind::Busy => {
-                "Another link wait is already running. Wait for it to finish."
-            }
+            ErrorKind::Busy => "Another link wait is already running. Wait for it to finish.",
             ErrorKind::Cancelled => "The link wait was cancelled.",
             ErrorKind::Timeout => "The platform gave no link before its deadline.",
             ErrorKind::AssociationInvalid => {
@@ -134,6 +132,14 @@ impl ErrorKind {
         }
     }
 }
+
+impl fmt::Display for DeepLinksError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.joined())
+    }
+}
+
+impl std::error::Error for DeepLinksError {}
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
