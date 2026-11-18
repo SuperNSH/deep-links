@@ -6,9 +6,9 @@ None. The three decisions this repo opened with are resolved below.
 
 ## Decided
 
-### 1. NSH version: nsh-core 0.5.1 from crates.io
+### 1. NSH version: nsh-core 0.6.0 from crates.io
 
-`crates/nsh-deep-links` depends on `nsh-core = "0.5.1"`, the 0.5 bug-fix release (no API
+`crates/nsh-deep-links` depends on `nsh-core = "0.6.0"` (moved from 0.5.1; the 0.5 line was a bug-fix release, no API
 changes; 2026-11-16). Until 0.5.0 it depended on
 `nsh-core = { git = "https://github.com/longbridge/nsh" }`: docs.rs for nsh-core 0.4.0
 (checked 2026-11-10) published no `url_scheme` module, and the custom-scheme core this

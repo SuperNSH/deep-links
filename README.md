@@ -1,7 +1,7 @@
 # nsh-deep-links
 
 Universal Links on iOS and macOS, App Links on Android, and the app's custom URL schemes for
-Native Shell (NSH) 0.5.1 apps: each link checked, classified and routed to a screen, and
+Native Shell (NSH) 0.6.0 apps: each link checked, classified and routed to a screen, and
 delivered exactly once.
 
 Part of the NSH capability set: a Rust crate, a TypeScript package that mirrors it, docs in
