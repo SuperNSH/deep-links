@@ -105,8 +105,8 @@ association fetching, and web intake beyond the page address.
 
 ## Acceptance criteria
 
-Each criterion names the gate in `.github/workflows/ci.yml` that proves it. No CI run of
-this change-set exists yet; the local runs that passed are listed in `docs/parity.md`.
+Each criterion names the gate in `.github/workflows/ci.yml` that proves it. All seven
+pass in CI run https://github.com/SuperNSH/deep-links/actions/runs/44376314593; see `docs/parity.md`.
 
 1. The workspace is clean: `cargo fmt --all -- --check` and
    `cargo clippy -p nsh-deep-links --all-targets -- -D warnings` pass on Linux, macOS and

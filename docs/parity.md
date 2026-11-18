@@ -94,13 +94,13 @@ Our names (predetermined; the TypeScript package mirrors them one-to-one): `Deep
 
 ## Status
 
-What exists, and what ran. Local runs were on macOS (arm64) on 2026-11-17; no GitHub Actions run of this change-set exists yet.
+What exists, and what ran. Local runs were on macOS (arm64) on 2026-11-17. CI: https://github.com/SuperNSH/deep-links/actions/runs/44376314593 (commit 274d269) passed every job: format; rust on ubuntu, macos, windows (clippy and `cargo test -p nsh-deep-links --all-targets`); check for aarch64-apple-ios, aarch64-apple-ios-sim, aarch64-linux-android, wasm32-unknown-unknown; typescript (`nsh check`, `nsh build`, `nsh test`). The macOS job was cancelled while queued and passed on a re-run.
 
 | Capability | Status | Evidence |
 |---|---|---|
-| `DeepLinks`, `Link`, `LinkKind`, `PendingLink`, `DeepLinksError` | implemented, both languages | Rust `tests/links.rs` (26 tests), TS `tests/links.test.ts` + `app.test.tsx`; passed locally |
-| `RouteTable` matching and `from_config` validation | implemented, both languages | Rust `tests/routes.rs` + inline tests, TS `tests/routes.test.ts`; passed locally |
-| Association builders and validators | implemented, both languages | Rust `tests/association.rs`, TS `tests/association.test.ts`, same JSON byte for byte; passed locally |
+| `DeepLinks`, `Link`, `LinkKind`, `PendingLink`, `DeepLinksError` | implemented, both languages | Rust `tests/links.rs` (26 tests), TS `tests/links.test.ts` + `app.test.tsx`; passed locally and in that CI run |
+| `RouteTable` matching and `from_config` validation | implemented, both languages | Rust `tests/routes.rs` + inline tests, TS `tests/routes.test.ts`; passed locally and in that CI run |
+| Association builders and validators | implemented, both languages | Rust `tests/association.rs`, TS `tests/association.test.ts`, same JSON byte for byte; passed locally and in that CI run |
 | `Backend`, `FakeBackend` / `memoryBackend()`, `UnsupportedBackend` / `unsupportedBackend()` | implemented | the suites above |
 | `NativeDeepLinks` and TS `rustBackend()` | implemented; core's `check_url`, `check_scheme` and limits reach TS through it | the TS suite runs against the built crate |
 | Apple Universal Links (`continueUserActivity` added at runtime) | implemented, compile-checked only | clippy for `aarch64-apple-ios`, `aarch64-apple-ios-sim`, macOS; never run on a device or simulator. iOS cold-start links are not seen |

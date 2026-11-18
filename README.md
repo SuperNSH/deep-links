@@ -9,9 +9,13 @@ Part of the NSH capability set: a Rust crate, a TypeScript package that mirrors 
 
 ## Status
 
-Implemented; not yet run in CI. The local gates (fmt, clippy on the host and the iOS, Android
-and wasm targets, `cargo test`, `nsh check`, `nsh build`, `nsh test`) passed on macOS; the
-results are in [docs/parity.md](docs/parity.md). Nothing has run on a device or simulator.
+Implemented and green in CI: run https://github.com/SuperNSH/deep-links/actions/runs/44376314593 (commit 274d269, "build: move to NSH 0.6.0")
+passed all nine jobs: format, rust on Ubuntu, macOS and Windows, clippy cross-checks for
+`aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` and
+`wasm32-unknown-unknown`, and the TypeScript job (`nsh check`, `nsh build` with no warning,
+`nsh test`). The macOS job was cancelled in the queue once and passed on a re-run of the same
+run. Nothing has run on a device or simulator: the Apple and Android bridges are only
+compile-checked.
 
 What a platform delivers, and the two gaps a crate cannot close (an iOS cold-start Universal
 Link, an App Link reaching a running Android app), are in
