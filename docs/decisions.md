@@ -93,11 +93,19 @@ Decided 2026-11-17, with the code.
   be lost) and skips the one queued copy of the launch link, so `initial` and `next` never
   both hand it out. The state lives in a surface global (`try_global`), which also tells the
   crate when no engine runs.
-- **Apple.** NSH's hosts implement no `continueUserActivity`, so the Apple module adds that
-  one method to the host's delegate class at runtime (`class_addMethod`, on the main queue),
-  only where the class has none. This is the one host-touching step a crate can take; it
-  cannot reach an iOS cold-start activity, which the host reads from the scene's connection
-  options before crate code runs. That gap is documented, not papered over.
+- **Apple.** NSH 0.5.1's hosts implemented no `continueUserActivity`, and the crate added one.
+  NSH 0.6.0's hosts do (`nsh-platform-ios/src/app.rs` `scene:continueUserActivity:`,
+  `nsh-platform-macos/src/app.rs` `application:continueUserActivity:restorationHandler:`),
+  for their own Handoff activity type only: `handoff::continued_url` is `None` for a web page
+  and NSH core "takes no web links (Universal Links)" (`nsh-platform-apple/src/handoff.rs`).
+  A crate that left a delegate alone when it already had the method would never see a
+  Universal Link, so since 0.6.0 the Apple module replaces the method's implementation with its
+  own, which takes the web page's URL and then calls the host's original (`chain_method`, on the
+  main queue). A delegate without the method still gets ours alone. This is the one
+  host-touching step a crate can take; it cannot reach an iOS cold-start activity, which the
+  host reads from the scene's connection options before crate code runs and drops unless it is
+  its own Handoff type. That gap is documented, not papered over. Test, on the macOS runner:
+  `a_universal_link_reaches_the_inbox_while_the_hosts_own_method_still_runs`.
 - **Android.** The launch intent is read over JNI. App Links that reach a running app go to
   `onNewIntent`, which NSH's activity hands only to core, and core keeps claimed schemes
   only; `https` never reaches the crate. Closing that needs the host to pass `https` intents

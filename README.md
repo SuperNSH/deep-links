@@ -15,7 +15,8 @@ passed all nine jobs: format, rust on Ubuntu, macOS and Windows, clippy cross-ch
 `wasm32-unknown-unknown`, and the TypeScript job (`nsh check`, `nsh build` with no warning,
 `nsh test`). The macOS job was cancelled in the queue once and passed on a re-run of the same
 run. Nothing has run on a device or simulator: the Apple and Android bridges are only
-compile-checked.
+compile-checked. The Apple bridge changed after that run (it now chains NSH 0.6.0's own
+`continueUserActivity`), and its macOS test has not run in CI yet.
 
 What a platform delivers, and the two gaps a crate cannot close (an iOS cold-start Universal
 Link, an App Link reaching a running Android app), are in
