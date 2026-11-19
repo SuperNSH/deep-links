@@ -107,8 +107,8 @@ Decided 2026-11-17, with the code.
   its own Handoff type. That gap is documented, not papered over. Test, on the macOS runner:
   `a_universal_link_reaches_the_inbox_while_the_hosts_own_method_still_runs`.
 - **Android.** The launch intent is read over JNI. App Links that reach a running app go to
-  `onNewIntent`, which NSH's activity hands only to core, and core keeps claimed schemes
-  only; `https` never reaches the crate. Closing that needs the host to pass `https` intents
+  `onNewIntent`, which NSH's activity hands only to core (`NshView.handleUrlSchemeIntent`), and core keeps claimed schemes
+  only, `http` and `https` being reserved (checked on 0.6.0 in `nsh-core/src/url_scheme.rs`); `https` never reaches the crate. Closing that needs the host to pass `https` intents
   on. Documented as not seen.
 - **Windows, Linux:** core's intake only; no `windows` or `gtk4` dependency, so no system
   packages are needed to build. **Web:** the page's address only.
