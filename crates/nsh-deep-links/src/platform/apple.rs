@@ -282,14 +282,8 @@ mod tests {
         unsafe {
             builder.add_method(
                 sel!(application:continueUserActivity:restorationHandler:),
-                host_method
-                    as extern "C-unwind" fn(
-                        &AnyObject,
-                        Sel,
-                        *mut AnyObject,
-                        *mut AnyObject,
-                        *mut AnyObject,
-                    ) -> Bool,
+                // `_` for one lifetime: the method trait is not implemented for all of them.
+                host_method as extern "C-unwind" fn(_, _, _, _, _) -> _,
             );
         }
         let class = builder.register();
