@@ -243,7 +243,7 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
 
     use objc2::{
-        AnyThread,
+        AnyThread, ClassType,
         rc::Retained,
         runtime::{AnyObject, Bool, ClassBuilder, Imp, NSObject, Sel},
         sel,

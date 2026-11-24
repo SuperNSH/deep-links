@@ -7,6 +7,18 @@ delivered exactly once.
 Part of the NSH capability set: a Rust crate, a TypeScript package that mirrors it, docs in
 `docs/`, CI on GitHub Actions, and a status page at https://supernsh.github.io/deep-links/.
 
+## Install
+
+In the app's directory:
+
+```sh
+nsh add nsh-deep-links
+```
+
+`nsh add` needs NSH main or the nightly: the 0.6.0 and 0.6.1 releases do not have it. In a Rust app, `cargo add nsh-deep-links` works with any of them.
+
+TSX imports `nsh-deep-links`, `nsh-deep-links/rust` and `nsh-deep-links/memory`.
+
 ## Status
 
 Implemented and green in CI: run https://github.com/SuperNSH/deep-links/actions/runs/44376314593 (commit 274d269, "build: move to NSH 0.6.0")

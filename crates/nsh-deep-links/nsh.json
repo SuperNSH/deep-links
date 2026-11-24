@@ -1,0 +1,8 @@
+{
+  "nsh": ">=0.6",
+  "exports": {
+    "nsh-deep-links": "tsx/index.ts",
+    "nsh-deep-links/rust": "tsx/rust.ts",
+    "nsh-deep-links/memory": "tsx/memory.ts"
+  }
+}

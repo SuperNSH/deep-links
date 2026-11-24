@@ -6,7 +6,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+readme = "../../README.md"
+# crates.io finds NSH modules by this keyword.
+keywords = ["nshm", "nsh", "deep-links"]
 
 [lib]
 name = "nsh_deep_links"
