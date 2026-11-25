@@ -6,9 +6,9 @@ None. The three decisions this repo opened with are resolved below.
 
 ## Decided
 
-### 1. NSH version: nsh-core 0.7.0 from crates.io (0.7.1 resolves)
+### 1. NSH version: nsh-core 0.7.1 from crates.io
 
-`crates/nsh-deep-links` depends on `nsh-core = "0.7.0"`. It moved from 0.6.0 on 2026-11-25: the names it uses keep their signatures on 0.7.1 (`url_scheme::check_url`, `check_scheme`, `MAX_URL_LEN`, `element::next_url_scheme_open`, `app_url`, `try_global`). Before that it moved from 0.5.1 on 2026-11-16, a bug-fix release with no API changes. Until 0.5.0 it depended on
+`crates/nsh-deep-links` depends on `nsh-core = "0.7.1"`. It moved from 0.6.0 on 2026-11-25: the names it uses keep their signatures on 0.7.1 (`url_scheme::check_url`, `check_scheme`, `MAX_URL_LEN`, `element::next_url_scheme_open`, `app_url`, `try_global`). Before that it moved from 0.5.1 on 2026-11-16, a bug-fix release with no API changes. Until 0.5.0 it depended on
 `nsh-core = { git = "https://github.com/longbridge/nsh" }`: docs.rs for nsh-core 0.4.0
 (checked 2026-11-10) published no `url_scheme` module, and the custom-scheme core this
 crate wraps — `check_url`, `check_scheme`, `schemes_from_json`, `MAX_URL_LEN`,
