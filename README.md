@@ -1,7 +1,7 @@
 # nsh-deep-links
 
 Universal Links on iOS and macOS, App Links on Android, and the app's custom URL schemes for
-Native Shell (NSH) 0.6.0 apps: each link checked, classified and routed to a screen, and
+Native Shell (NSH) 0.7.1 apps: each link checked, classified and routed to a screen, and
 delivered exactly once.
 
 Part of the NSH capability set: a Rust crate, a TypeScript package that mirrors it, docs in
@@ -15,7 +15,7 @@ In the app's directory:
 nsh add nsh-deep-links
 ```
 
-`nsh add` needs NSH main or the nightly: the 0.6.0 and 0.6.1 releases do not have it. In a Rust app, `cargo add nsh-deep-links` works with any of them.
+`nsh add` needs NSH 0.7.0 or later: the 0.6.x releases do not have it. In a Rust app, `cargo add nsh-deep-links` works with any of them.
 
 TSX imports `nsh-deep-links`, `nsh-deep-links/rust` and `nsh-deep-links/memory`.
 
@@ -27,7 +27,7 @@ passed all nine jobs: format, rust on Ubuntu, macOS and Windows, clippy cross-ch
 `wasm32-unknown-unknown`, and the TypeScript job (`nsh check`, `nsh build` with no warning,
 `nsh test`). The macOS job was cancelled in the queue once and passed on a re-run of the same
 run. Nothing has run on a device or simulator: the Apple and Android bridges are only
-compile-checked. The Apple bridge changed after that run (it now chains NSH 0.6.0's own
+compile-checked. The Apple bridge changed after that run (it now chains NSH 0.7.1's own
 `continueUserActivity`), and its macOS test has not run in CI yet.
 
 What a platform delivers, and the two gaps a crate cannot close (an iOS cold-start Universal

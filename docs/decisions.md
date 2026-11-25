@@ -6,10 +6,9 @@ None. The three decisions this repo opened with are resolved below.
 
 ## Decided
 
-### 1. NSH version: nsh-core 0.6.0 from crates.io
+### 1. NSH version: nsh-core 0.7.0 from crates.io (0.7.1 resolves)
 
-`crates/nsh-deep-links` depends on `nsh-core = "0.6.0"` (moved from 0.5.1; the 0.5 line was a bug-fix release, no API
-changes; 2026-11-16). Until 0.5.0 it depended on
+`crates/nsh-deep-links` depends on `nsh-core = "0.7.0"`. It moved from 0.6.0 on 2026-11-25: the names it uses keep their signatures on 0.7.1 (`url_scheme::check_url`, `check_scheme`, `MAX_URL_LEN`, `element::next_url_scheme_open`, `app_url`, `try_global`). Before that it moved from 0.5.1 on 2026-11-16, a bug-fix release with no API changes. Until 0.5.0 it depended on
 `nsh-core = { git = "https://github.com/longbridge/nsh" }`: docs.rs for nsh-core 0.4.0
 (checked 2026-11-10) published no `url_scheme` module, and the custom-scheme core this
 crate wraps — `check_url`, `check_scheme`, `schemes_from_json`, `MAX_URL_LEN`,
@@ -94,10 +93,12 @@ Decided 2026-11-17, with the code.
   both hand it out. The state lives in a surface global (`try_global`), which also tells the
   crate when no engine runs.
 - **Apple.** NSH 0.5.1's hosts implemented no `continueUserActivity`, and the crate added one.
-  NSH 0.6.0's hosts do (`nsh-platform-ios/src/app.rs` `scene:continueUserActivity:`,
-  `nsh-platform-macos/src/app.rs` `application:continueUserActivity:restorationHandler:`),
-  for their own Handoff activity type only: `handoff::continued_url` is `None` for a web page
-  and NSH core "takes no web links (Universal Links)" (`nsh-platform-apple/src/handoff.rs`).
+  NSH 0.6.0's hosts did (`nsh-platform-ios/src/app.rs` `scene:continueUserActivity:`,
+  `nsh-platform-macos/src/app.rs` `application:continueUserActivity:restorationHandler:`) for
+  their own Handoff activity type only, and core "took no web links (Universal Links)". NSH
+  0.7.1's hosts also pass a web page's link to core's `url_scheme`, which keeps it when the app
+  declares the host in `nsh.json` `links`. This crate still takes the link into its own inbox
+  first, and reads core's queue for schemes only, so it never gets that copy.
   A crate that left a delegate alone when it already had the method would never see a
   Universal Link, so since 0.6.0 the Apple module replaces the method's implementation with its
   own, which takes the web page's URL and then calls the host's original (`chain_method`, on the
@@ -107,9 +108,10 @@ Decided 2026-11-17, with the code.
   its own Handoff type. That gap is documented, not papered over. Test, on the macOS runner:
   `a_universal_link_reaches_the_inbox_while_the_hosts_own_method_still_runs`.
 - **Android.** The launch intent is read over JNI. App Links that reach a running app go to
-  `onNewIntent`, which NSH's activity hands only to core (`NshView.handleUrlSchemeIntent`), and core keeps claimed schemes
-  only, `http` and `https` being reserved (checked on 0.6.0 in `nsh-core/src/url_scheme.rs`); `https` never reaches the crate. Closing that needs the host to pass `https` intents
-  on. Documented as not seen.
+  `onNewIntent`, which NSH 0.7.1's activity hands to core (`NshView.handleUrlSchemeIntent`).
+  Core keeps claimed schemes and the app's declared `links` (`AppLinks`, `nsh-core/src/url_scheme.rs`),
+  but this crate's core path checks schemes only (`check_url`), so `https` never reaches the crate.
+  Taking it from core would bypass the crate's own host check, so that is not done. Documented as not seen.
 - **Windows, Linux:** core's intake only; no `windows` or `gtk4` dependency, so no system
   packages are needed to build. **Web:** the page's address only.
 

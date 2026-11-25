@@ -1,15 +1,16 @@
 //! Apple: Universal Links. The system hands one to the app as an `NSUserActivity` of type
-//! `NSUserActivityTypeBrowsingWeb` through `continueUserActivity`. NSH core takes no web links,
-//! and NSH 0.6.0's hosts implement that method only for their own Handoff activity type
-//! (`nsh-platform-ios/src/app.rs`, `nsh-platform-macos/src/app.rs`), so this module puts itself
+//! `NSUserActivityTypeBrowsingWeb` through `continueUserActivity`. NSH 0.7.1's hosts implement
+//! that method for Handoff and web links alike (`nsh-platform-ios/src/app.rs`,
+//! `nsh-platform-macos/src/app.rs`) and pass a web link on to core. This module still puts itself
 //! in front of the host's delegate method at runtime, on the main queue: the scene delegate on
-//! iOS, the application delegate on macOS. The host's own implementation stays and is called
-//! after ours. A delegate without the method gets ours alone. Custom schemes come through NSH
-//! core.
+//! iOS, the application delegate on macOS. It takes the link into its inbox, then the host's own
+//! implementation runs as before, after ours. A delegate without the method gets ours alone.
+//! Custom schemes come through NSH core.
 //!
 //! On iOS a Universal Link that cold-starts the app sits in the scene's connection options,
-//! which the host reads before any crate code runs: it is not seen. On macOS the system calls
-//! `continueUserActivity` after launch, so a launch link arrives through `next`.
+//! which the host reads before any crate code runs and passes to core: it is not seen here. On
+//! macOS the system calls `continueUserActivity` after launch, so a launch link arrives through
+//! `next`.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
@@ -262,7 +263,7 @@ mod tests {
 
     static HOST_CALLED: AtomicBool = AtomicBool::new(false);
 
-    /// A host's own `continueUserActivity`, as NSH 0.6.0's macOS host has one.
+    /// A host's own `continueUserActivity`, as NSH 0.7.1's macOS host has one.
     extern "C-unwind" fn host_method(
         _this: &AnyObject,
         _cmd: Sel,
